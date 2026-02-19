@@ -1,2 +1,2 @@
 # AIXworkbench
-LLM manager built on Open WebUI developed by SUNY Polytechnic Institute Artificial Intelligence Exploration Center 
+LLM manager and environment built at SUNY Polytechnic Institute Artificial Intelligence Exploration Center 
