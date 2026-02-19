@@ -9,16 +9,6 @@ feeds:
     url: "https://www.google.com/alerts/feeds/00086923709683272338/12088656225651964488"
     category: "scholar"
 
-  # Google Alerts RSS — "AI literacy" higher education
-  - name: "Google Alerts — AI literacy higher education"
-    url: "https://www.google.com/alerts/feeds/REPLACE_WITH_YOUR_ALERT_ID/REPLACE_WITH_TOKEN"
-    category: "scholar"
-
-  # Google Alerts RSS — generative AI teaching ethics
-  - name: "Google Alerts — generative AI teaching ethics"
-    url: "https://www.google.com/alerts/feeds/REPLACE_WITH_YOUR_ALERT_ID/REPLACE_WITH_TOKEN"
-    category: "scholar"
-
   # Inside Higher Ed
   - name: "Inside Higher Ed"
     url: "https://www.insidehighered.com/rss.xml"
