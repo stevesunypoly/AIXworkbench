@@ -6,7 +6,7 @@ feeds:
   # Google Alerts RSS — set up alerts at https://www.google.com/alerts
   # Search: "AI literacy" pedagogy  → copy the RSS URL here
   - name: "Google Alerts — AI literacy pedagogy"
-    url: "https://www.google.com/alerts/feeds/REPLACE_WITH_YOUR_ALERT_ID/REPLACE_WITH_TOKEN"
+    url: "https://www.google.com/alerts/feeds/00086923709683272338/12088656225651964488"
     category: "scholar"
 
   # Google Alerts RSS — "AI literacy" higher education
