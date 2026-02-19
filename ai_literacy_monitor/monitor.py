@@ -27,8 +27,10 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Optional
 
+import urllib.request
+import xml.etree.ElementTree as ET
+
 import anthropic
-import feedparser
 import yaml
 from dotenv import load_dotenv
 
@@ -81,7 +83,7 @@ def prune_seen(seen: dict, max_age_days: int) -> dict:
     }
 
 
-def item_id(entry: feedparser.FeedParserDict) -> str:
+def item_id(entry: dict) -> str:
     """Stable identifier for a feed entry."""
     raw = entry.get("id") or entry.get("link") or entry.get("title", "")
     return hashlib.sha256(raw.encode()).hexdigest()
@@ -92,25 +94,71 @@ def item_id(entry: feedparser.FeedParserDict) -> str:
 # ---------------------------------------------------------------------------
 
 def fetch_feed(feed_cfg: dict) -> list[dict]:
-    """Fetch one RSS feed and return a list of item dicts."""
+    """Fetch one RSS/Atom feed and return a list of item dicts."""
     url = feed_cfg["url"]
     name = feed_cfg["name"]
     log.info("Fetching: %s", name)
-    parsed = feedparser.parse(url)
-    if parsed.bozo:
-        log.warning("Feed parse issue for '%s': %s", name, parsed.bozo_exception)
-    items = []
-    for entry in parsed.entries:
-        items.append(
+
+    req = urllib.request.Request(url, headers={"User-Agent": "AIXworkbench-Monitor/1.0"})
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        raw = resp.read()
+
+    root = ET.fromstring(raw)
+    ns_atom = "http://www.w3.org/2005/Atom"
+
+    # Detect format: Atom vs RSS 2.0
+    if root.tag == f"{{{ns_atom}}}feed" or root.tag == "feed":
+        # Atom
+        entries = root.findall(f"{{{ns_atom}}}entry")
+        def _text(el, tag):
+            child = el.find(f"{{{ns_atom}}}{tag}")
+            return (child.text or "").strip() if child is not None else ""
+        def _link(el):
+            for link in el.findall(f"{{{ns_atom}}}link"):
+                if link.get("rel", "alternate") == "alternate":
+                    return link.get("href", "")
+            # fallback: first link element
+            link = el.find(f"{{{ns_atom}}}link")
+            return link.get("href", "") if link is not None else ""
+        raw_entries = [
             {
-                "id": item_id(entry),
-                "source": name,
-                "title": entry.get("title", "(no title)"),
-                "link": entry.get("link", ""),
-                "summary": entry.get("summary", entry.get("description", "")),
-                "published": entry.get("published", ""),
+                "id": _text(e, "id") or _link(e),
+                "title": _text(e, "title") or "(no title)",
+                "link": _link(e),
+                "summary": _text(e, "summary") or _text(e, "content"),
+                "published": _text(e, "published") or _text(e, "updated"),
             }
-        )
+            for e in entries
+        ]
+    else:
+        # RSS 2.0 — root is <rss>, channel is first child
+        channel = root.find("channel") or root
+        entries = channel.findall("item")
+        def _rtext(el, tag):
+            child = el.find(tag)
+            return (child.text or "").strip() if child is not None else ""
+        raw_entries = [
+            {
+                "id": _rtext(e, "guid") or _rtext(e, "link"),
+                "title": _rtext(e, "title") or "(no title)",
+                "link": _rtext(e, "link"),
+                "summary": _rtext(e, "description"),
+                "published": _rtext(e, "pubDate"),
+            }
+            for e in entries
+        ]
+
+    items = [
+        {
+            "id": item_id(e),
+            "source": name,
+            "title": e["title"],
+            "link": e["link"],
+            "summary": e["summary"],
+            "published": e["published"],
+        }
+        for e in raw_entries
+    ]
     log.info("  → %d items", len(items))
     return items
 
@@ -197,6 +245,10 @@ def summarise_with_claude(
         log.info("No new items to summarise.")
         return None
 
+    if dry_run:
+        log.info("[dry-run] Would send %d items to Claude.", len(items))
+        return "[dry-run] Claude summarisation skipped."
+
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         log.error("ANTHROPIC_API_KEY is not set.")
@@ -210,10 +262,6 @@ def summarise_with_claude(
         min=min_b,
         items=format_items_for_prompt(items),
     )
-
-    if dry_run:
-        log.info("[dry-run] Would send %d items to Claude.", len(items))
-        return "[dry-run] Claude summarisation skipped."
 
     log.info("Sending %d items to Claude (%s)…", len(items), config["claude"]["model"])
     client = anthropic.Anthropic(api_key=api_key)

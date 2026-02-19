@@ -16,17 +16,17 @@ feeds:
 
   # The Chronicle of Higher Education
   - name: "Chronicle of Higher Education"
-    url: "https://www.chronicle.com/feeds/all"
+    url: "https://www.chronicle.com/index.atom"
     category: "news"
 
   # EdSurge
   - name: "EdSurge"
-    url: "https://www.edsurge.com/articles.rss"
+    url: "https://www.edsurge.com/articles_rss"
     category: "news"
 
-  # EDUCAUSE
+  # EDUCAUSE Review
   - name: "EDUCAUSE"
-    url: "https://www.educause.edu/feed"
+    url: "https://er.educause.edu/rss"
     category: "news"
 
 output:
