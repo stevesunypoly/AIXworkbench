@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Monitor state & generated reports
+ai_literacy_monitor/state/
+reports/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
