@@ -390,7 +390,11 @@ def main() -> None:
     config = load_config(args.config)
 
     # --- Load deduplication state ---
-    state_path = config["state"]["seen_file"]
+    # Resolve relative paths from the config file's directory so state is
+    # stored next to the script regardless of the working directory.
+    config_dir = Path(args.config).resolve().parent
+    raw_state_path = config["state"]["seen_file"]
+    state_path = str(config_dir / raw_state_path)
     seen = load_seen(state_path)
     seen = prune_seen(seen, config["state"]["max_age_days"])
     log.info("Loaded %d previously seen item IDs.", len(seen))

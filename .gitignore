@@ -8,6 +8,7 @@ __pycache__/
 *.egg-info/
 
 # Monitor state & generated reports
+state/
 ai_literacy_monitor/state/
 reports/
 
