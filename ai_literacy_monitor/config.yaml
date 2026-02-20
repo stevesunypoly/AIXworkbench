@@ -32,7 +32,7 @@ feeds:
 output:
   # Local path — mount SharePoint as a network drive and point here,
   # or use any directory. Created automatically if absent.
-  directory: "/mnt/sharepoint/AILiteracy/daily_reports"
+  directory: "./reports"
 
   # Fallback local directory used when SharePoint is unavailable
   fallback_directory: "./reports"
