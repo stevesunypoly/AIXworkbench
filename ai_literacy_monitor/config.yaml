@@ -37,13 +37,6 @@ output:
   # Fallback local directory used when SharePoint is unavailable
   fallback_directory: "./reports"
 
-email:
-  to: "steve@sunypoly.edu"
-  from: "ailiteracy-monitor@sunypoly.edu"
-  subject_prefix: "AI Literacy Digest"
-  smtp_host: "smtp.sunypoly.edu"
-  smtp_port: 587
-  use_tls: true
 
 claude:
   model: "claude-opus-4-6"

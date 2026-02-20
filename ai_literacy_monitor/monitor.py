@@ -439,7 +439,8 @@ def main() -> None:
         log.info("[dry-run] Report preview:\n%s", report)
 
     # --- Email ---
-    send_email(report, config, dry_run=args.dry_run)
+    if "email" in config:
+        send_email(report, config, dry_run=args.dry_run)
 
     # --- Persist seen state ---
     today_str = datetime.now(timezone.utc).isoformat()
