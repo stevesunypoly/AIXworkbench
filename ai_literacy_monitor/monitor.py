@@ -302,10 +302,11 @@ def build_report(digest: str, item_count: int, feed_count: int) -> str:
     )
 
 
-def write_report(report: str, config: dict) -> Path:
-    """Write the report to the configured output directory. Falls back to local dir."""
+def write_report(report: str, items: list[dict], config: dict) -> Path:
+    """Write the report and a raw-items sidecar JSON to the output directory."""
     today = date.today().isoformat()
     filename = f"ai_literacy_{today}.md"
+    items_filename = f"ai_literacy_{today}_items.json"
 
     primary = Path(config["output"]["directory"])
     fallback = Path(config["output"]["fallback_directory"])
@@ -316,6 +317,9 @@ def write_report(report: str, config: dict) -> Path:
             out_path = directory / filename
             out_path.write_text(report, encoding="utf-8")
             log.info("Report written: %s", out_path)
+            items_path = directory / items_filename
+            items_path.write_text(json.dumps(items, indent=2, ensure_ascii=False), encoding="utf-8")
+            log.info("Items sidecar written: %s", items_path)
             return out_path
         except OSError as exc:
             log.warning("Cannot write to %s: %s — trying fallback.", directory, exc)
@@ -434,7 +438,7 @@ def main() -> None:
     )
 
     if not args.dry_run:
-        write_report(report, config)
+        write_report(report, new_items, config)
     else:
         log.info("[dry-run] Report preview:\n%s", report)
 
