@@ -1,49 +1,137 @@
 # AI Literacy Monitor — Configuration
 # Copy this file and adjust paths/addresses for your environment.
-# Secrets (API keys, SMTP password) go in .env — never here.
+# Secrets (API keys, SMTP password, Zotero key) go in .env — never here.
 
 feeds:
-  # Google Alerts RSS — set up alerts at https://www.google.com/alerts
-  # Search: "AI literacy" pedagogy  → copy the RSS URL here
+
+  # ── Core Higher-Ed News ────────────────────────────────────────────────────
+
   - name: "Google Alerts — AI literacy pedagogy"
     url: "https://www.google.com/alerts/feeds/00086923709683272338/12088656225651964488"
     category: "scholar"
 
-  # Inside Higher Ed
   - name: "Inside Higher Ed"
     url: "https://www.insidehighered.com/rss.xml"
     category: "news"
 
-  # The Chronicle of Higher Education
   - name: "Chronicle of Higher Education"
     url: "https://www.chronicle.com/index.atom"
     category: "news"
 
-  # EdSurge
   - name: "EdSurge"
     url: "https://www.edsurge.com/articles_rss"
     category: "news"
 
-  # EDUCAUSE Review
   - name: "EDUCAUSE"
     url: "https://er.educause.edu/rss"
     category: "news"
 
-output:
-  # Local path — mount SharePoint as a network drive and point here,
-  # or use any directory. Created automatically if absent.
-  directory: "./reports"
+  # ── Africa & Global South ──────────────────────────────────────────────────
 
-  # Fallback local directory used when SharePoint is unavailable
-  fallback_directory: "./reports"
+  - name: "University World News — Africa Edition"
+    url: "https://www.universityworldnews.com/rss.php?edition=africa"
+    category: "africa"
+
+  - name: "AAU Blog (Association of African Universities)"
+    url: "https://blog.aau.org/feed/"
+    category: "africa"
+
+  - name: "KNUST RAIL (Responsible AI Lab)"
+    url: "https://rail.knust.edu.gh/feed/"
+    category: "africa"
+
+  - name: "GhScientific — Ghana STEM"
+    url: "https://ghscientific.com/feed/"
+    category: "africa"
+
+  - name: "Africanews — Education"
+    url: "https://www.africanews.com/tag/education/feed/"
+    category: "africa"
+
+  - name: "AI4D Africa"
+    url: "https://www.ai4d.ai/feed/"
+    category: "africa"
+
+  # ── Global Journals & Policy ───────────────────────────────────────────────
+
+  - name: "EJISDC — Electronic Journal of Information Systems in Developing Countries"
+    url: "https://onlinelibrary.wiley.com/feed/16814835/most-recent"
+    category: "journal"
+
+  - name: "RSS: Data Science & AI (Royal Statistical Society)"
+    url: "https://rss.org.uk/feed/"
+    category: "journal"
+
+  - name: "Nature — Humanities & Social Sciences Communications"
+    url: "https://www.nature.com/rss/feeds/humanities-and-social-sciences-communications.rss"
+    category: "journal"
+
+  - name: "International Science Council"
+    url: "https://council.science/feed/"
+    category: "policy"
+
+  # ── Frontiers in Education ─────────────────────────────────────────────────
+
+  - name: "Frontiers in Education — AI & Digital Learning"
+    url: "https://www.frontiersin.org/journals/education/rss"
+    category: "journal"
+
+  # ── UNESCO & ITU ───────────────────────────────────────────────────────────
+
+  - name: "UNESCO — Education"
+    url: "https://www.unesco.org/en/rss/education"
+    category: "policy"
+
+  - name: "ITU News"
+    url: "https://www.itu.int/en/rss/Pages/news.aspx"
+    category: "policy"
+
+  # ── Stanford HAI ───────────────────────────────────────────────────────────
+
+  - name: "Stanford HAI — Human-Centred AI"
+    url: "https://hai.stanford.edu/news/rss.xml"
+    category: "research"
+
+  # ── ACM Digital Library — Computers & Education ────────────────────────────
+
+  - name: "ACM — Computers & Education"
+    url: "https://dl.acm.org/action/showFeed?type=etoc&feed=rss&jc=toce"
+    category: "journal"
+
+
+output:
+  # All reports and logs land in this single directory.
+  # Created automatically if absent.
+  directory: "./-f"
+  fallback_directory: "./-f"
+
+  # Log file — written alongside reports.
+  log_file: "monitor.log"
+
+
+zotero:
+  # Your Zotero group library ID (numeric).
+  # Find it at: https://www.zotero.org/groups/<id>/  (the number in the URL)
+  group_id: "YOUR_ZOTERO_GROUP_ID"
+
+  # Item type used when creating Zotero records from feed items.
+  item_type: "webpage"
+
+  # Tag applied to every item pushed by this monitor.
+  tag: "ai-literacy-monitor"
+
+  # API base URL — do not change.
+  api_base: "https://api.zotero.org"
 
 
 claude:
   model: "claude-opus-4-6"
-  max_tokens: 1024
+  max_tokens: 1500
+
   # Keywords used to pre-filter feed items before sending to Claude.
   # Items whose title or summary contain none of these are skipped.
   filter_keywords:
+    # Core topic
     - "AI literacy"
     - "artificial intelligence"
     - "generative AI"
@@ -51,17 +139,49 @@ claude:
     - "ChatGPT"
     - "large language model"
     - "LLM"
+    - "deep learning"
+    - "data science"
+    # Pedagogy & education
     - "pedagogy"
     - "higher education"
     - "teaching"
+    - "curriculum"
+    - "competenc"
+    - "digital literacy"
+    - "STEM"
+    - "engineers"
+    - "scientists"
+    # Ethics & policy
     - "ethics"
+    - "responsible AI"
+    - "AI governance"
+    - "AI policy"
+    - "AI strategy"
+    # Geography
+    - "Africa"
+    - "Global South"
+    - "developing countr"
+    - "KNUST"
+    - "Ghana"
+    - "Nigeria"
+    - "Kenya"
+    - "South Africa"
+    - "Rwanda"
+    - "Ethiopia"
+    - "Senegal"
+    # Institutions
+    - "university"
+    - "faculty"
+    - "student"
+
 
 report:
-  max_bullets: 15
+  max_bullets: 20
   min_bullets: 5
+
 
 state:
   # Tracks seen item IDs across runs to deduplicate.
-  seen_file: "./state/seen_items.json"
+  seen_file: "./-f/seen_items.json"
   # Items older than this many days are pruned from the seen list.
   max_age_days: 30

@@ -3,14 +3,15 @@
 AI Literacy Monitor
 -------------------
 Fetches RSS feeds, deduplicates against previous runs, asks Claude to
-summarize new developments in AI literacy, and delivers a dated Markdown
-report to a SharePoint folder and via email.
+summarize new developments in AI literacy, pushes new items to a Zotero
+group library, and writes a dated Markdown report + log to the -f directory.
 
 Usage:
-    python monitor.py [--config path/to/config.yaml] [--dry-run]
+    python monitor.py [--config path/to/config.yaml] [--dry-run] [--show-new]
 
 Environment variables (see .env.example):
     ANTHROPIC_API_KEY   — required
+    ZOTERO_API_KEY      — required for Zotero push
     SMTP_PASSWORD       — required if email is enabled
 """
 
@@ -21,14 +22,14 @@ import logging
 import os
 import smtplib
 import sys
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import date, datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Optional
-
-import urllib.request
-import xml.etree.ElementTree as ET
 
 import anthropic
 import yaml
@@ -36,12 +37,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+# Logging is configured after the output directory is known (see setup_logging).
 log = logging.getLogger(__name__)
+
+
+def setup_logging(output_dir: Path, log_filename: str) -> None:
+    """Configure console + rotating file logging into the output directory."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    log_path = output_dir / log_filename
+    fmt = "%(asctime)s  %(levelname)-8s  %(message)s"
+    datefmt = "%Y-%m-%d %H:%M:%S"
+    handlers: list[logging.Handler] = [
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(log_path, encoding="utf-8"),
+    ]
+    logging.basicConfig(level=logging.INFO, format=fmt, datefmt=datefmt, handlers=handlers)
+    log.info("Logging to %s", log_path)
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +377,86 @@ def send_email(report: str, config: dict, dry_run: bool = False) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Zotero group push
+# ---------------------------------------------------------------------------
+
+ZOTERO_BATCH_SIZE = 50  # Zotero API max items per write request
+
+
+def _make_zotero_item(item: dict, cfg: dict) -> dict:
+    """Convert a feed item dict to a Zotero API item object."""
+    return {
+        "itemType": cfg.get("item_type", "webpage"),
+        "title": item["title"],
+        "url": item["link"],
+        "abstractNote": item["summary"][:2000],
+        "date": item.get("published", ""),
+        "accessDate": date.today().isoformat(),
+        "tags": [
+            {"tag": cfg.get("tag", "ai-literacy-monitor")},
+            {"tag": item.get("source", "")},
+        ],
+        "extra": f"Source feed: {item.get('source', '')}",
+    }
+
+
+def push_to_zotero(items: list[dict], config: dict, dry_run: bool = False) -> int:
+    """Push new feed items to the configured Zotero group library.
+
+    Returns the number of items successfully written (0 on dry-run or error).
+    """
+    zot_cfg = config.get("zotero", {})
+    group_id = str(zot_cfg.get("group_id", "")).strip()
+    api_base = zot_cfg.get("api_base", "https://api.zotero.org")
+
+    if not group_id or group_id == "YOUR_ZOTERO_GROUP_ID":
+        log.warning("Zotero group_id not configured — skipping Zotero push.")
+        return 0
+
+    api_key = os.environ.get("ZOTERO_API_KEY", "").strip()
+    if not api_key:
+        log.warning("ZOTERO_API_KEY not set — skipping Zotero push.")
+        return 0
+
+    if dry_run:
+        log.info("[dry-run] Would push %d item(s) to Zotero group %s.", len(items), group_id)
+        return 0
+
+    endpoint = f"{api_base}/groups/{group_id}/items"
+    headers = {
+        "Zotero-API-Key": api_key,
+        "Zotero-API-Version": "3",
+        "Content-Type": "application/json",
+    }
+
+    zotero_items = [_make_zotero_item(it, zot_cfg) for it in items]
+    total_written = 0
+
+    for i in range(0, len(zotero_items), ZOTERO_BATCH_SIZE):
+        batch = zotero_items[i: i + ZOTERO_BATCH_SIZE]
+        body = json.dumps(batch).encode("utf-8")
+        req = urllib.request.Request(endpoint, data=body, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                result = json.loads(resp.read())
+                written = len(result.get("success", {}))
+                failed = len(result.get("failed", {}))
+                total_written += written
+                log.info(
+                    "Zotero batch %d–%d: %d written, %d failed.",
+                    i + 1, i + len(batch), written, failed,
+                )
+                if failed:
+                    for key, err in result.get("failed", {}).items():
+                        log.warning("  Zotero item %s failed: %s", key, err)
+        except Exception as exc:
+            log.error("Zotero push failed for batch starting at %d: %s", i, exc)
+
+    log.info("Zotero push complete: %d item(s) added to group %s.", total_written, group_id)
+    return total_written
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -393,10 +484,15 @@ def main() -> None:
     args = parse_args()
     config = load_config(args.config)
 
+    # --- Set up output directory and logging ---
+    config_dir = Path(args.config).resolve().parent
+    out_dir = config_dir / config["output"]["directory"]
+    log_filename = config["output"].get("log_file", "monitor.log")
+    setup_logging(out_dir, log_filename)
+
     # --- Load deduplication state ---
     # Resolve relative paths from the config file's directory so state is
     # stored next to the script regardless of the working directory.
-    config_dir = Path(args.config).resolve().parent
     raw_state_path = config["state"]["seen_file"]
     state_path = str(config_dir / raw_state_path)
     seen = load_seen(state_path)
@@ -417,7 +513,6 @@ def main() -> None:
 
     if not new_items:
         log.info("Nothing new today — no report generated.")
-        # Still update seen so re-fetched old items stay suppressed
         today_str = datetime.now(timezone.utc).isoformat()
         for item in all_items:
             seen.setdefault(item["id"], today_str)
@@ -441,6 +536,9 @@ def main() -> None:
         write_report(report, new_items, config)
     else:
         log.info("[dry-run] Report preview:\n%s", report)
+
+    # --- Push to Zotero ---
+    push_to_zotero(new_items, config, dry_run=args.dry_run)
 
     # --- Email ---
     if "email" in config:
