@@ -1,16 +1,21 @@
-# Secrets
+# Secrets — never commit
 .env
+
+# User config (copied from config.example.yaml)
+config.yaml
+
+# Output directory
+-f/
 
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
 .venv/
+venv/
 *.egg-info/
-
-# Monitor state & generated reports
-state/
-ai_literacy_monitor/state/
-reports/
+dist/
+build/
 
 # macOS
 .DS_Store
@@ -18,3 +23,4 @@ reports/
 # Editor
 .vscode/
 .idea/
+*.swp

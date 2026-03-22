@@ -1,0 +1,93 @@
+# rss2zotero — Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# Copy this file to config.yaml and edit for your use case.
+# Secrets (API keys) go in .env — never in this file.
+#
+# Quick start:
+#   1. cp config.example.yaml config.yaml
+#   2. cp .env.example .env  →  fill in ANTHROPIC_API_KEY and ZOTERO_API_KEY
+#   3. Add your feeds below
+#   4. Set your Zotero group_id
+#   5. python rss2zotero.py --dry-run --show-new
+# ─────────────────────────────────────────────────────────────────────────────
+
+feeds:
+  # Add any RSS or Atom feed URL here. Category is free-text — used only for
+  # your own organisation; it has no effect on filtering or Zotero tagging.
+
+  # Example: Google Alerts RSS
+  # Set up an alert at https://www.google.com/alerts, choose "RSS feed"
+  # as the delivery method, then paste the feed URL here.
+  - name: "Google Alerts — your topic"
+    url: "https://www.google.com/alerts/feeds/XXXXXXX/XXXXXXX"
+    category: "alerts"
+
+  # Example: journal / publisher feed
+  - name: "Nature — topic section"
+    url: "https://www.nature.com/rss/feeds/your-section.rss"
+    category: "journal"
+
+  # Example: news / blog
+  - name: "Example news site"
+    url: "https://example.com/feed/"
+    category: "news"
+
+  # Example: institutional or lab blog (most WordPress sites expose /feed/)
+  - name: "Example lab blog"
+    url: "https://example-lab.org/feed/"
+    category: "research"
+
+
+output:
+  # Directory for reports and the log file. Created automatically if absent.
+  # A name starting with - (like ./-f) works fine with Python's pathlib.
+  directory: "./-f"
+  fallback_directory: "./-f"
+
+  # Log file written into the output directory alongside reports.
+  log_file: "rss2zotero.log"
+
+
+zotero:
+  # Numeric ID of your Zotero group library.
+  # Find it in the URL: https://www.zotero.org/groups/<id>/
+  group_id: "YOUR_ZOTERO_GROUP_ID"
+
+  # Zotero item type assigned to every uploaded record.
+  # Common values: webpage, journalArticle, blogPost, magazineArticle
+  item_type: "webpage"
+
+  # Tag applied to every item pushed by this script — useful for filtering
+  # inside Zotero.
+  tag: "rss2zotero"
+
+  # Zotero Web API base URL — do not change.
+  api_base: "https://api.zotero.org"
+
+
+claude:
+  # Claude model used for summarisation.
+  # See https://docs.anthropic.com/en/docs/about-claude/models
+  model: "claude-opus-4-6"
+  max_tokens: 1500
+
+  # Keyword pre-filter applied before sending items to Claude.
+  # An item must contain at least one of these strings (case-insensitive)
+  # in its title or summary to be included. Leave empty ([]) to pass
+  # everything through.
+  filter_keywords:
+    - "your keyword"
+    - "another keyword"
+
+
+report:
+  # Bullet-point count bounds for the Claude-generated digest.
+  max_bullets: 15
+  min_bullets: 3
+
+
+state:
+  # JSON file tracking previously seen item IDs across runs (deduplication).
+  seen_file: "./-f/seen_items.json"
+  # Items older than this many days are pruned from the seen list.
+  max_age_days: 30
